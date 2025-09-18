@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerBI Access Manager - Portfolio Services Data Analytics Report 3.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .adam-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .varun-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .maneesh-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .pulse-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.33); }
+            40%, 50% { opacity: 1; }
+            100% { opacity: 0; transform: scale(1.2); }
+        }
+        .active-pulse {
+            background-color: #10b981;
+            animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        .ai-guy { font-size: 1.8rem; }
+        .mustache-guy { font-size: 1.8rem; }
+        .geek-guy { font-size: 1.8rem; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">🔐 PowerBI Access Manager</h1>
+            <p class="text-xl text-gray-300">Portfolio Services - Data Analytics Report 3.0</p>
+            <div class="mt-4 glass-effect rounded-lg p-4 inline-block">
+                <div class="flex items-center space-x-2 text-gray-300">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                    <span id="connection-status">Connected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Members Grid -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <!-- Adam -->
+            <div id="adam-card" class="glass-effect rounded-xl p-6 transition-all duration-300 hover:scale-105">
+                <div class="text-center">
+                    <div class="relative inline-block mb-4">
+                        <div class="adam-icon w-20 h-20 rounded-full flex items-center justify-center text-white mx-auto">
+                            <div class="ai-guy">🤖</div>
+                        </div>
+                        <div id="adam-status" class="absolute -top-1 -right-1 w-6 h-6 bg-gray-500 rounded-full border-2 border-white"></div>
+                        <div id="adam-pulse" class="absolute -top-1 -right-1 w-6 h-6 rounded-full opacity-0"></div>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-1">Adam</h3>
+                    <p class="text-gray-400 text-sm mb-4">(Adam Hitchiner)</p>
+                    <div id="adam-actions" class="space-y-2">
+                        <button onclick="requestAccess('adam')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">Request Access</button>
+                    </div>
+                    <div id="adam-info" class="mt-3 text-xs text-gray-400"></div>
+                </div>
+            </div>
+
+            <!-- Maneesh -->
+            <div id="maneesh-card" class="glass-effect rounded-xl p-6 transition-all duration-300 hover:scale-105">
+                <div class="text-center">
+                    <div class="relative inline-block mb-4">
+                        <div class="maneesh-icon w-20 h-20 rounded-full flex items-center justify-center text-white mx-auto">
+                            <div class="mustache-guy">🥸</div>
+                        </div>
+                        <div id="maneesh-status" class="absolute -top-1 -right-1 w-6 h-6 bg-gray-500 rounded-full border-2 border-white"></div>
+                        <div id="maneesh-pulse" class="absolute -top-1 -right-1 w-6 h-6 rounded-full opacity-0"></div>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-1">Maneesh</h3>
+                    <p class="text-gray-400 text-sm mb-4">(Maneesh Yati)</p>
+                    <div id="maneesh-actions" class="space-y-2">
+                        <button onclick="requestAccess('maneesh')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">Request Access</button>
+                    </div>
+                    <div id="maneesh-info" class="mt-3 text-xs text-gray-400"></div>
+                </div>
+            </div>
+
+            <!-- Varun -->
+            <div id="varun-card" class="glass-effect rounded-xl p-6 transition-all duration-300 hover:scale-105">
+                <div class="text-center">
+                    <div class="relative inline-block mb-4">
+                        <div class="varun-icon w-20 h-20 rounded-full flex items-center justify-center text-white mx-auto">
+                            <div class="geek-guy">🤓</div>
+                        </div>
+                        <div id="varun-status" class="absolute -top-1 -right-1 w-6 h-6 bg-gray-500 rounded-full border-2 border-white"></div>
+                        <div id="varun-pulse" class="absolute -top-1 -right-1 w-6 h-6 rounded-full opacity-0"></div>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-1">Varun</h3>
+                    <p class="text-gray-400 text-sm mb-4">(Varun Nanagia)</p>
+                    <div id="varun-actions" class="space-y-2">
+                        <button onclick="requestAccess('varun')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">Request Access</button>
+                    </div>
+                    <div id="varun-info" class="mt-3 text-xs text-gray-400"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Report Status -->
+        <div class="glass-effect rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4 flex items-center">
+                <i data-lucide="file-bar-chart" class="w-6 h-6 mr-2"></i>Report Status
+            </h2>
+            <div id="report-status" class="bg-gray-800 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white font-medium">Portfolio Services - Data Analytics Report 3.0</p>
+                        <p id="current-user" class="text-gray-400 text-sm">Available for editing</p>
+                    </div>
+                    <div id="report-indicator" class="w-4 h-4 bg-green-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PowerBI Embed Section -->
+        <div id="powerbi-section" class="glass-effect rounded-xl p-6 mb-8" style="display: none;">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-semibold text-white flex items-center">
+                    <i data-lucide="monitor" class="w-6 h-6 mr-2"></i>PowerBI Report
+                </h2>
+                <button onclick="closeReport()" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">Close Report</button>
+            </div>
+            <div id="powerbi-container" class="bg-gray-800 rounded-lg p-8 text-center text-gray-400 min-h-96">
+                <i data-lucide="bar-chart-3" class="w-16 h-16 mx-auto mb-4"></i>
+                <p class="text-lg mb-2">PowerBI Report Integration</p>
+                <p class="text-sm">In production, this would embed your actual PowerBI report</p>
+                <div class="mt-4 p-4 bg-gray-700 rounded-lg">
+                    <p class="text-xs text-gray-300">Report: Portfolio Services - Data Analytics Report 3.0</p>
+                    <p class="text-xs text-gray-300 mt-1">Currently editing: <span id="current-editor">None</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="glass-effect rounded-xl p-6">
+            <h2 class="text-2xl font-semibold text-white mb-4 flex items-center">
+                <i data-lucide="clock" class="w-6 h-6 mr-2"></i>Activity Log
+            </h2>
+            <div id="activity-log" class="space-y-2 max-h-60 overflow-y-auto">
+                <div class="text-gray-400 text-sm">Application initialized - Ready for collaboration</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-4 right-4 bg-white text-gray-800 px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300">
+        <div id="toast-message"></div>
+    </div>
+
+    <script>
+        // Application state
+        let appState = {
+            currentUser: null,
+            users: {
+                adam: { name: 'Adam (Adam Hitchiner)', status: 'offline', lastSeen: null },
+                maneesh: { name: 'Maneesh (Maneesh Yati)', status: 'offline', lastSeen: null },
+                varun: { name: 'Varun (Varun Nanagia)', status: 'offline', lastSeen: null }
+            },
+            reportInUse: false,
+            activityLog: []
+        };
+
+        function initApp() {
+            lucide.createIcons();
+            updateUI();
+            setTimeout(() => addToActivityLog('System ready for PowerBI collaboration'), 1000);
+        }
+
+        function requestAccess(userId) {
+            if (appState.reportInUse && appState.currentUser !== userId) {
+                showNotification(`Report is currently being used by ${appState.users[appState.currentUser].name}. Please wait for them to finish.`, 'warning');
+                return;
+            }
+            if (appState.currentUser === userId) {
+                showPowerBIReport(userId);
+                return;
+            }
+            appState.currentUser = userId;
+            appState.reportInUse = true;
+            appState.users[userId].status = 'active';
+            updateUI();
+            showPowerBIReport(userId);
+            addToActivityLog(`${appState.users[userId].name} started editing the report`);
+            showNotification(`Access granted! You can now edit the PowerBI report.`, 'success');
+        }
+
+        function showPowerBIReport(userId) {
+            document.getElementById('powerbi-section').style.display = 'block';
+            document.getElementById('current-editor').textContent = appState.users[userId].name;
+            document.getElementById('powerbi-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeReport() {
+            if (appState.currentUser) {
+                const userName = appState.users[appState.currentUser].name;
+                appState.users[appState.currentUser].status = 'offline';
+                appState.users[appState.currentUser].lastSeen = new Date();
+                addToActivityLog(`${userName} finished editing the report`);
+                showNotification('Report closed. Others can now access it.', 'info');
+            }
+            appState.currentUser = null;
+            appState.reportInUse = false;
+            document.getElementById('powerbi-section').style.display = 'none';
+            updateUI();
+        }
+
+        function updateUI() {
+            Object.keys(appState.users).forEach(userId => {
+                const user = appState.users[userId];
+                const statusElement = document.getElementById(`${userId}-status`);
+                const pulseElement = document.getElementById(`${userId}-pulse`);
+                const actionsElement = document.getElementById(`${userId}-actions`);
+                const infoElement = document.getElementById(`${userId}-info`);
+
+                if (user.status === 'active') {
+                    statusElement.className = 'absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white';
+                    pulseElement.className = 'absolute -top-1 -right-1 w-6 h-6 rounded-full active-pulse';
+                    
+                    if (appState.currentUser === userId) {
+                        actionsElement.innerHTML = `
+                            <button onclick="showPowerBIReport('${userId}')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">View Report</button>
+                            <button onclick="closeReport()" class="w-full bg-red-600 hover:bg-red-700 text-white py-1 px-4 rounded-lg transition-colors text-sm">Close Report</button>
+                        `;
+                        infoElement.textContent = 'Currently editing';
+                    } else {
+                        actionsElement.innerHTML = `<button disabled class="w-full bg-gray-600 text-white py-2 px-4 rounded-lg opacity-50 cursor-not-allowed">In Use</button>`;
+                        infoElement.textContent = 'Report in use';
+                    }
+                } else {
+                    statusElement.className = 'absolute -top-1 -right-1 w-6 h-6 bg-gray-500 rounded-full border-2 border-white';
+                    pulseElement.className = 'absolute -top-1 -right-1 w-6 h-6 rounded-full opacity-0';
+                    actionsElement.innerHTML = `<button onclick="requestAccess('${userId}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">Request Access</button>`;
+                    infoElement.textContent = user.lastSeen ? `Last seen: ${user.lastSeen.toLocaleTimeString()}` : 'Available';
+                }
+            });
+
+            const currentUserElement = document.getElementById('current-user');
+            const reportIndicator = document.getElementById('report-indicator');
+            
+            if (appState.reportInUse && appState.currentUser) {
+                currentUserElement.textContent = `Currently being edited by ${appState.users[appState.currentUser].name}`;
+                reportIndicator.className = 'w-4 h-4 bg-red-500 rounded-full';
+            } else {
+                currentUserElement.textContent = 'Available for editing';
+                reportIndicator.className = 'w-4 h-4 bg-green-500 rounded-full';
+            }
+        }
+
+        function addToActivityLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            const logContainer = document.getElementById('activity-log');
+            const logElement = document.createElement('div');
+            logElement.className = 'text-gray-300 text-sm p-2 bg-gray-800 rounded';
+            logElement.textContent = logEntry;
+            
+            if (logContainer.firstChild?.textContent === 'Application initialized - Ready for collaboration') {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+            
+            logContainer.insertBefore(logElement, logContainer.firstChild);
+            while (logContainer.children.length > 10) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            
+            const colors = {
+                success: 'bg-green-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                error: 'bg-red-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            toast.className = `fixed top-4 right-4 ${colors[type]} px-6 py-3 rounded-lg shadow-lg transform transition-transform duration-300`;
+            toast.style.transform = 'translateX(0)';
+            setTimeout(() => toast.style.transform = 'translateX(100%)', 3000);
+        }
+
+        function simulateRealTimeUpdates() {
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const users = Object.keys(appState.users);
+                    const randomUser = users[Math.floor(Math.random() * users.length)];
+                    
+                    if (appState.users[randomUser].status === 'offline' && appState.currentUser !== randomUser) {
+                        appState.users[randomUser].status = 'online';
+                        addToActivityLog(`${appState.users[randomUser].name} came online`);
+                        updateUI();
+                        
+                        setTimeout(() => {
+                            if (appState.currentUser !== randomUser) {
+                                appState.users[randomUser].status = 'offline';
+                                appState.users[randomUser].lastSeen = new Date();
+                                updateUI();
+                            }
+                        }, 5000 + Math.random() * 10000);
+                    }
+                }
+            }, 15000);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            simulateRealTimeUpdates();
+        });
+    </script>
+</body>
+</html>
