@@ -41,7 +41,7 @@
             <div class="mt-4 glass-effect rounded-lg p-4 inline-block">
                 <div class="flex items-center space-x-2 text-gray-300">
                     <i data-lucide="activity" class="w-5 h-5"></i>
-                    <span id="connection-status">Connected</span>
+                    <span id="connection-status">Connecting...</span>
                 </div>
             </div>
         </div>
@@ -115,9 +115,9 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-white font-medium">Portfolio Services - Data Analytics Report 3.0</p>
-                        <p id="current-user" class="text-gray-400 text-sm">Available for editing</p>
+                        <p id="current-user" class="text-gray-400 text-sm">Loading...</p>
                     </div>
-                    <div id="report-indicator" class="w-4 h-4 bg-green-500 rounded-full"></div>
+                    <div id="report-indicator" class="w-4 h-4 bg-gray-500 rounded-full"></div>
                 </div>
             </div>
         </div>
@@ -158,134 +158,161 @@
     </div>
 
     <script>
-        // Shared state management using localStorage for cross-tab synchronization
-        const STATE_KEY = 'powerbi_access_state';
-        const HEARTBEAT_KEY = 'powerbi_heartbeat';
-        const HEARTBEAT_INTERVAL = 5000; // 5 seconds
-        const HEARTBEAT_TIMEOUT = 15000; // 15 seconds
-
+        // Configuration
+        const API_BASE = 'https://api.jsonbin.io/v3/b';
+        const BIN_ID = '676078e3ad19ca34f8cc8ee7'; // Shared bin ID for all users
+        const API_KEY = '$2a$10$8l.VD7YRW1PLNJS5m0jVEOtHGOY0n/Q8V3J2LcKyEpR1TBZA0rMFa'; // Read-only access
+        
         let sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let currentDeviceId = 'device_' + (localStorage.getItem('deviceId') || Math.random().toString(36).substr(2, 12));
+        
+        // Store device ID for future sessions
+        if (!localStorage.getItem('deviceId')) {
+            localStorage.setItem('deviceId', currentDeviceId.replace('device_', ''));
+        }
 
         // Default state
         const defaultState = {
             currentUser: null,
             users: {
-                adam: { name: 'Adam (Adam Hitchiner)', status: 'offline', lastSeen: null, sessionId: null },
-                maneesh: { name: 'Maneesh (Maneesh Yati)', status: 'offline', lastSeen: null, sessionId: null },
-                varun: { name: 'Varun (Varun Nanagia)', status: 'offline', lastSeen: null, sessionId: null }
+                adam: { name: 'Adam (Adam Hitchiner)', status: 'offline', lastSeen: null, sessionId: null, deviceId: null },
+                maneesh: { name: 'Maneesh (Maneesh Yati)', status: 'offline', lastSeen: null, sessionId: null, deviceId: null },
+                varun: { name: 'Varun (Varun Nanagia)', status: 'offline', lastSeen: null, sessionId: null, deviceId: null }
             },
             reportInUse: false,
             activityLog: [],
             lastUpdated: Date.now()
         };
 
-        // State management functions
-        function getState() {
+        let appState = { ...defaultState };
+        let syncInterval;
+        let isOnline = false;
+
+        // API Functions using JSONBin.io as a simple backend
+        async function loadState() {
             try {
-                const stored = localStorage.getItem(STATE_KEY);
-                if (stored) {
-                    const state = JSON.parse(stored);
-                    // Check if current user's session is still valid
-                    if (state.currentUser && state.users[state.currentUser].sessionId) {
-                        const heartbeat = getHeartbeat(state.users[state.currentUser].sessionId);
-                        if (!heartbeat || Date.now() - heartbeat > HEARTBEAT_TIMEOUT) {
-                            // Session expired, clear the user
-                            state.users[state.currentUser].status = 'offline';
-                            state.users[state.currentUser].sessionId = null;
-                            state.users[state.currentUser].lastSeen = new Date().toISOString();
-                            state.currentUser = null;
-                            state.reportInUse = false;
+                document.getElementById('connection-status').textContent = 'Connecting...';
+                
+                const response = await fetch(`${API_BASE}/${BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': API_KEY
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const serverState = data.record;
+                    
+                    // Check if any active sessions are expired (more than 2 minutes old)
+                    if (serverState.currentUser && serverState.users[serverState.currentUser].lastUpdated) {
+                        const timeSinceUpdate = Date.now() - serverState.users[serverState.currentUser].lastUpdated;
+                        if (timeSinceUpdate > 120000) { // 2 minutes
+                            // Session expired, clear it
+                            serverState.users[serverState.currentUser].status = 'offline';
+                            serverState.users[serverState.currentUser].sessionId = null;
+                            serverState.users[serverState.currentUser].deviceId = null;
+                            serverState.users[serverState.currentUser].lastSeen = new Date().toISOString();
+                            serverState.currentUser = null;
+                            serverState.reportInUse = false;
+                            
+                            // Save the cleaned state back
+                            await saveState(serverState);
                         }
                     }
-                    return state;
+                    
+                    appState = serverState;
+                    isOnline = true;
+                    document.getElementById('connection-status').textContent = 'Connected';
+                } else {
+                    throw new Error('Failed to load state');
                 }
-            } catch (e) {
-                console.error('Error reading state:', e);
+            } catch (error) {
+                console.error('Error loading state:', error);
+                document.getElementById('connection-status').textContent = 'Offline Mode';
+                isOnline = false;
+                // Use local fallback if available
+                const localState = localStorage.getItem('powerbi_fallback_state');
+                if (localState) {
+                    appState = JSON.parse(localState);
+                }
             }
-            return { ...defaultState };
+            updateUI();
         }
 
-        function setState(newState) {
+        async function saveState(state = appState) {
+            if (!isOnline) {
+                // Save locally as fallback
+                localStorage.setItem('powerbi_fallback_state', JSON.stringify(state));
+                return;
+            }
+
             try {
-                newState.lastUpdated = Date.now();
-                localStorage.setItem(STATE_KEY, JSON.stringify(newState));
-                // Trigger storage event for other tabs
-                window.dispatchEvent(new StorageEvent('storage', {
-                    key: STATE_KEY,
-                    newValue: JSON.stringify(newState)
-                }));
-            } catch (e) {
-                console.error('Error saving state:', e);
+                state.lastUpdated = Date.now();
+                
+                const response = await fetch(`${API_BASE}/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(state)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save state');
+                }
+                
+                // Also save locally as backup
+                localStorage.setItem('powerbi_fallback_state', JSON.stringify(state));
+                
+            } catch (error) {
+                console.error('Error saving state:', error);
+                // Fall back to local storage
+                localStorage.setItem('powerbi_fallback_state', JSON.stringify(state));
+                document.getElementById('connection-status').textContent = 'Connection Issues';
             }
         }
-
-        function setHeartbeat(sessionId) {
-            try {
-                localStorage.setItem(HEARTBEAT_KEY + '_' + sessionId, Date.now().toString());
-            } catch (e) {
-                console.error('Error setting heartbeat:', e);
-            }
-        }
-
-        function getHeartbeat(sessionId) {
-            try {
-                const heartbeat = localStorage.getItem(HEARTBEAT_KEY + '_' + sessionId);
-                return heartbeat ? parseInt(heartbeat) : null;
-            } catch (e) {
-                console.error('Error getting heartbeat:', e);
-                return null;
-            }
-        }
-
-        let appState = getState();
 
         function initApp() {
             lucide.createIcons();
-            updateUI();
-            startHeartbeat();
-            setTimeout(() => addToActivityLog('System ready for PowerBI collaboration'), 1000);
+            loadState();
             
-            // Listen for storage changes from other tabs
-            window.addEventListener('storage', (e) => {
-                if (e.key === STATE_KEY && e.newValue) {
-                    try {
-                        const newState = JSON.parse(e.newValue);
-                        if (newState.lastUpdated > appState.lastUpdated) {
-                            appState = newState;
-                            updateUI();
-                        }
-                    } catch (err) {
-                        console.error('Error parsing storage event:', err);
+            // Start periodic sync
+            syncInterval = setInterval(() => {
+                if (isOnline) {
+                    loadState();
+                    
+                    // Send heartbeat if we're the current user
+                    if (appState.currentUser && 
+                        appState.users[appState.currentUser].sessionId === sessionId && 
+                        appState.users[appState.currentUser].deviceId === currentDeviceId) {
+                        
+                        appState.users[appState.currentUser].lastUpdated = Date.now();
+                        saveState();
                     }
                 }
-            });
-
+            }, 5000); // Check every 5 seconds
+            
             // Clean up on page unload
             window.addEventListener('beforeunload', () => {
-                if (appState.currentUser && appState.users[appState.currentUser].sessionId === sessionId) {
+                if (appState.currentUser && 
+                    appState.users[appState.currentUser].sessionId === sessionId &&
+                    appState.users[appState.currentUser].deviceId === currentDeviceId) {
                     closeReport();
                 }
             });
+            
+            setTimeout(() => addToActivityLog('System ready for PowerBI collaboration'), 1000);
         }
 
-        function startHeartbeat() {
-            setInterval(() => {
-                // Send heartbeat if we're the current user
-                if (appState.currentUser && appState.users[appState.currentUser].sessionId === sessionId) {
-                    setHeartbeat(sessionId);
-                }
-                
-                // Check and refresh state
-                const currentState = getState();
-                if (currentState.lastUpdated > appState.lastUpdated) {
-                    appState = currentState;
-                    updateUI();
-                }
-            }, HEARTBEAT_INTERVAL);
-        }
+        async function requestAccess(userId) {
+            if (!isOnline) {
+                showNotification('Connection required to request access. Please check your internet connection.', 'error');
+                return;
+            }
 
-        function requestAccess(userId) {
-            appState = getState(); // Get fresh state
+            // Refresh state first
+            await loadState();
             
             if (appState.reportInUse && appState.currentUser !== userId) {
                 const currentUserName = appState.users[appState.currentUser]?.name || 'Unknown User';
@@ -293,7 +320,9 @@
                 return;
             }
             
-            if (appState.currentUser === userId && appState.users[userId].sessionId === sessionId) {
+            if (appState.currentUser === userId && 
+                appState.users[userId].sessionId === sessionId &&
+                appState.users[userId].deviceId === currentDeviceId) {
                 showPowerBIReport(userId);
                 return;
             }
@@ -303,15 +332,14 @@
             appState.reportInUse = true;
             appState.users[userId].status = 'active';
             appState.users[userId].sessionId = sessionId;
+            appState.users[userId].deviceId = currentDeviceId;
+            appState.users[userId].lastUpdated = Date.now();
             
-            setState(appState);
+            await saveState();
             updateUI();
             showPowerBIReport(userId);
             addToActivityLog(`${appState.users[userId].name} started editing the report`);
             showNotification(`Access granted! You can now edit the PowerBI report.`, 'success');
-            
-            // Start heartbeat for this session
-            setHeartbeat(sessionId);
         }
 
         function showPowerBIReport(userId) {
@@ -320,18 +348,26 @@
             document.getElementById('powerbi-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function closeReport() {
-            appState = getState(); // Get fresh state
-            
-            if (appState.currentUser && appState.users[appState.currentUser].sessionId === sessionId) {
+        async function closeReport() {
+            if (!isOnline) {
+                showNotification('Connection required to close report properly.', 'warning');
+                return;
+            }
+
+            if (appState.currentUser && 
+                appState.users[appState.currentUser].sessionId === sessionId &&
+                appState.users[appState.currentUser].deviceId === currentDeviceId) {
+                
                 const userName = appState.users[appState.currentUser].name;
                 appState.users[appState.currentUser].status = 'offline';
                 appState.users[appState.currentUser].lastSeen = new Date().toISOString();
                 appState.users[appState.currentUser].sessionId = null;
+                appState.users[appState.currentUser].deviceId = null;
+                appState.users[appState.currentUser].lastUpdated = null;
                 appState.currentUser = null;
                 appState.reportInUse = false;
                 
-                setState(appState);
+                await saveState();
                 addToActivityLog(`${userName} finished editing the report`);
                 showNotification('Report closed. Others can now access it.', 'info');
             }
@@ -352,15 +388,15 @@
                     statusElement.className = 'absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white';
                     pulseElement.className = 'absolute -top-1 -right-1 w-6 h-6 rounded-full active-pulse';
                     
-                    if (user.sessionId === sessionId) {
-                        // This is the current user's session
+                    if (user.sessionId === sessionId && user.deviceId === currentDeviceId) {
+                        // This is the current user's session on this device
                         actionsElement.innerHTML = `
                             <button onclick="showPowerBIReport('${userId}')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">View Report</button>
                             <button onclick="closeReport()" class="w-full bg-red-600 hover:bg-red-700 text-white py-1 px-4 rounded-lg transition-colors text-sm">Close Report</button>
                         `;
                         infoElement.textContent = 'Currently editing';
                     } else {
-                        // Someone else is using it
+                        // Someone else is using it (different device/session)
                         actionsElement.innerHTML = `<button disabled class="w-full bg-gray-600 text-white py-2 px-4 rounded-lg opacity-50 cursor-not-allowed">In Use by ${user.name.split('(')[0].trim()}</button>`;
                         infoElement.textContent = 'Report in use';
                     }
@@ -388,18 +424,19 @@
                 reportIndicator.className = 'w-4 h-4 bg-green-500 rounded-full';
             }
 
-            // Update PowerBI section if it's open
+            // Update PowerBI section visibility
             const powerbiSection = document.getElementById('powerbi-section');
-            if (appState.currentUser && appState.users[appState.currentUser].sessionId === sessionId) {
+            if (appState.currentUser && 
+                appState.users[appState.currentUser].sessionId === sessionId &&
+                appState.users[appState.currentUser].deviceId === currentDeviceId) {
                 powerbiSection.style.display = 'block';
                 document.getElementById('current-editor').textContent = appState.users[appState.currentUser].name;
-            } else if (appState.reportInUse) {
+            } else {
                 powerbiSection.style.display = 'none';
             }
         }
 
-        function addToActivityLog(message) {
-            appState = getState();
+        async function addToActivityLog(message) {
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = `[${timestamp}] ${message}`;
             
@@ -408,7 +445,9 @@
                 appState.activityLog = appState.activityLog.slice(0, 10);
             }
             
-            setState(appState);
+            if (isOnline) {
+                await saveState();
+            }
             updateActivityLogUI();
         }
 
@@ -450,8 +489,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initApp();
-            // Update activity log UI with existing logs
-            updateActivityLogUI();
         });
     </script>
 </body>
